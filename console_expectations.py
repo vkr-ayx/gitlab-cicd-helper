@@ -2,6 +2,7 @@ from typing import List
 
 import runner_config
 from gitlab_ci import CiConfigFile
+from model import ExecConfig
 
 
 def all_executors() -> List[str]:
@@ -9,11 +10,10 @@ def all_executors() -> List[str]:
     return [config['executor'] for config in configs]
 
 
-def suggest_executors(job_name: str, ci_file: CiConfigFile) -> List[str]:
+def suggest_configs(job_name: str, ci_file: CiConfigFile) -> List[ExecConfig]:
     job = ci_file.get_job(job_name)
     configs = runner_config.suggest_configs(job)
-    executors = [conf['executor'] for conf in configs]
-    return executors
+    return configs
 
 
 def list_job_tags(job_name: str, ci_file: CiConfigFile) -> List[str]:

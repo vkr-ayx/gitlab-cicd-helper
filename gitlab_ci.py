@@ -29,7 +29,10 @@ class CiConfigFile:
                 raise e
 
     def get_job(self, job_name: str) -> dict:
-        return self.yml[job_name]
+        job = self.yml[job_name]
+        if type(job) is not dict:
+            raise ValueError(f"{job_name} is not a job! ({type(job)})")
+        return job
 
     def list_jobs(self) -> List[dict]:
         job_names = self.list_job_names()

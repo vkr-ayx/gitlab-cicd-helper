@@ -1,13 +1,19 @@
 # download from https://www.lfd.uci.edu/~gohlke/pythonlibs/#curses
 import curses
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 import console_expectations as exp
 from gitlab_ci import CiConfigFile
+from model import ExecConfig
+from runner_config import is_shell_executor, DEFAULT_CONFIGS
+from shells import ALL_SHELLS
 
 
-class UiState(TypedDict):
-    job_name: str
+class UiState:
+
+    def __init__(self) -> None:
+        self.job_name: Optional[str] = None
+        self.config: Optional[ExecConfig] = None
 
 
 def main():
@@ -18,11 +24,13 @@ def main():
     scr = curses.initscr()
     scr.keypad(True)
 
-    ui_state['job_name'] = ask_job_name(scr, ci_file)
+    ui_state.job_name = ask_job_name(scr, ci_file)
     scr.clear()
-    ask_executor(scr, ci_file, ui_state)
-    scr.clear()
-    #TODO
+    ui_state.config = ask_config(scr, ci_file, ui_state)
+    if is_shell_executor(ui_state.config):
+        scr.clear()
+        ask_shell(scr, ui_state)
+    # TODO
 
     scr.keypad(False)
     curses.endwin()
@@ -54,7 +62,7 @@ def ask_job_name(scr, ci_file: CiConfigFile) -> str:
     return job_name
 
 
-def ask_executor(scr, ci_file: CiConfigFile, ui_state: UiState) -> str:
+def ask_config(scr, ci_file: CiConfigFile, ui_state: UiState) -> ExecConfig:
     executor = None
 
     def _do_ask():
@@ -68,95 +76,58 @@ def ask_executor(scr, ci_file: CiConfigFile, ui_state: UiState) -> str:
             return exc
 
     all_executors = exp.all_executors()
-    job_name = ui_state['job_name']
+    job_name = ui_state.job_name
     tags = exp.list_job_tags(job_name, ci_file)
     tags_str = ', '.join(tags)
-    tag_str = ', '.join(tags)
-    suggested_executors = exp.suggest_executors(job_name, ci_file)
+    suggested_configs = exp.suggest_configs(job_name, ci_file)
+    suggested_executors = [conf['executor'] for conf in suggested_configs]
     suggested_executors_str = ', '.join(suggested_executors)
 
-    scr.addstr(f"Choose GitLab executor for job {ui_state['job_name']}:\n")
-    scr.addstr(f"Job tags: {tag_str}\n\n")
+    scr.addstr(f"Choose GitLab executor for job {ui_state.job_name}:\n")
+    scr.addstr(f"Job tags: {tags_str}\n\n")
     scr.addstr('Possible executors: ')
     for exc in all_executors[:-1]:
         scr.addstr(f'{exc}, ')
     scr.addstr(f'{all_executors[-1]}\n')
 
     if len(suggested_executors_str) > 0:
-        scr.addstr(f'Suggested executor(s) based on job tags {tags_str}: {suggested_executors_str}\n\n')
+        scr.addstr(f'Suggested executor(s) based on job tags [{tags_str}]: {suggested_executors_str}\n\n')
     else:
         scr.addstr('\n')
 
     while executor is None:
         executor = _do_ask()
 
-    return executor
+    selected_config = [config for config in DEFAULT_CONFIGS.values() if config['executor'] == executor][0]
+
+    return selected_config
 
 
-def printing(w):
-    """
-    A few simple demonstrations of printing.
-    """
+def ask_shell(scr, ui_state: UiState):
+    shell = None
 
-    w.addstr("This was printed using addstr\n\n")
-    w.refresh()
+    def _do_ask():
+        scr.addstr('Shell to use? ')
+        shell = scr.getstr().decode()
 
-    w.addstr("The following letter was printed using addch:- ")
-    w.addch('a')
-    w.refresh()
+        if shell not in ALL_SHELLS:
+            scr.addstr(f"No such shell '{shell}'.\n")
+            return None
+        else:
+            return shell
 
-    w.addstr("\n\nThese numbers were printed using addstr:-\n{}\n{:.6f}\n".format(123, 456.789))
-    w.refresh()
+    scr.addstr('Possible shells: ')
+    for shell in ALL_SHELLS[:-1]:
+        scr.addstr(f'{shell}, ')
+    scr.addstr(f'{ALL_SHELLS[-1]}\n')
 
+    suggested_shell = ui_state.config['shell']
+    if suggested_shell is not None:
+        scr.addstr(f'Suggested shell: {suggested_shell}\n\n')
+    scr.addstr('Shell to use? ')
 
-def moving_and_sleeping(w):
-    """
-    Demonstrates moving the cursor to a specified position before printing,
-    and sleeping for a specified period of time.
-    These are useful for very basic animations.
-    """
-
-    row = 5
-    col = 0
-
-    curses.curs_set(False)
-
-    for c in range(65, 91):
-        w.addstr(row, col, chr(c))
-        w.refresh()
-        row += 1
-        col += 1
-        curses.napms(100)
-
-    curses.curs_set(True)
-
-    w.addch('\n')
-
-
-def colouring(w):
-    """
-    Demonstration of setting background and foreground colours.
-    """
-
-    if curses.has_colors():
-
-        curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_RED)
-        curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_GREEN)
-        curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_CYAN)
-
-        w.addstr("Yellow on red\n\n", curses.color_pair(1))
-        w.refresh()
-
-        w.addstr("Green on green + bold\n\n", curses.color_pair(2) | curses.A_BOLD)
-        w.refresh()
-
-        w.addstr("Magenta on cyan\n", curses.color_pair(3))
-        w.refresh()
-
-    else:
-
-        w.addstr("has_colors() = False\n")
-        w.refresh()
+    while shell is None:
+        shell = _do_ask()
 
 
 if __name__ == '__main__':

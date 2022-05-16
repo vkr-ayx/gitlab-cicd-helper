@@ -1,11 +1,6 @@
-from typing import TypedDict, Optional, List, Dict
+from typing import List
 
-
-class ExecConfig(TypedDict):
-    executor: str
-    shell: Optional[str]
-    env: Dict[str, str]
-
+from model import ExecConfig
 
 DEFAULT_CONFIGS = {
     'windows-docker': ExecConfig(executor='docker-windows', shell=None),
@@ -13,6 +8,10 @@ DEFAULT_CONFIGS = {
     'linux-docker': ExecConfig(executor='docker', shell=None),
     'bash': ExecConfig(executor='shell')
 }
+
+
+def is_shell_executor(config: ExecConfig) -> bool:
+    return True #config['executor'] == 'shell'
 
 
 def _find_matching_tags(job: dict) -> List[str]:
