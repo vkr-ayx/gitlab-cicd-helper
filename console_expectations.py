@@ -7,7 +7,7 @@ from model import ExecConfig
 
 def all_executors() -> List[str]:
     configs = runner_config.DEFAULT_CONFIGS.values()
-    return [config['executor'] for config in configs]
+    return list(set([config['executor'] for config in configs]))
 
 
 def suggest_configs(job_name: str, ci_file: CiConfigFile) -> List[ExecConfig]:

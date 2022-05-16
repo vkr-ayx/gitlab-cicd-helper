@@ -11,7 +11,7 @@ DEFAULT_CONFIGS = {
 
 
 def is_shell_executor(config: ExecConfig) -> bool:
-    return True #config['executor'] == 'shell'
+    return config['executor'] == 'shell'
 
 
 def _find_matching_tags(job: dict) -> List[str]:

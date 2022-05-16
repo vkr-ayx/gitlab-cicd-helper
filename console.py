@@ -16,13 +16,23 @@ class UiState:
         self.config: Optional[ExecConfig] = None
 
 
+def _setup_scr():
+    scr = curses.initscr()
+    scr.keypad(True)
+    return scr
+
+
+def _teardown(scr):
+    scr.keypad(False)
+    curses.endwin()
+
+
 def main():
     yml_path = 'C:\git\project_100\.gitlab-ci.yml'
     ci_file = CiConfigFile(yml_path)
     ui_state = UiState()
 
-    scr = curses.initscr()
-    scr.keypad(True)
+    scr = _setup_scr()
 
     ui_state.job_name = ask_job_name(scr, ci_file)
     scr.clear()
@@ -32,8 +42,7 @@ def main():
         ask_shell(scr, ui_state)
     # TODO
 
-    scr.keypad(False)
-    curses.endwin()
+    _teardown(scr)
 
 
 def ask_job_name(scr, ci_file: CiConfigFile) -> str:
@@ -117,14 +126,13 @@ def ask_shell(scr, ui_state: UiState):
             return shell
 
     scr.addstr('Possible shells: ')
-    for shell in ALL_SHELLS[:-1]:
-        scr.addstr(f'{shell}, ')
+    for sh in ALL_SHELLS[:-1]:
+        scr.addstr(f'{sh}, ')
     scr.addstr(f'{ALL_SHELLS[-1]}\n')
 
     suggested_shell = ui_state.config['shell']
     if suggested_shell is not None:
         scr.addstr(f'Suggested shell: {suggested_shell}\n\n')
-    scr.addstr('Shell to use? ')
 
     while shell is None:
         shell = _do_ask()
