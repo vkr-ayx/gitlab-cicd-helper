@@ -1,6 +1,7 @@
 # download from https://www.lfd.uci.edu/~gohlke/pythonlibs/#curses
 import curses
-from typing import TypedDict, Optional
+from typing import Optional
+import subprocess
 
 import console_expectations as exp
 from gitlab_ci import CiConfigFile
@@ -14,6 +15,7 @@ class UiState:
     def __init__(self) -> None:
         self.job_name: Optional[str] = None
         self.config: Optional[ExecConfig] = None
+        self.shell: Optional[str] = None
 
 
 def _setup_scr():
@@ -39,10 +41,19 @@ def main():
     ui_state.config = ask_config(scr, ci_file, ui_state)
     if is_shell_executor(ui_state.config):
         scr.clear()
-        ask_shell(scr, ui_state)
-    # TODO
+        ui_state.shell = ask_shell(scr, ui_state)
+    else:
+        ui_state.shell = None
 
-    _teardown(scr)
+    scr.clear()
+    confirmation = recap(scr, ui_state)
+
+    if confirmation:
+        _teardown(scr)
+        exec_runner(scr, ui_state)
+    else:
+        scr.addstr("Exiting...")
+        _teardown(scr)
 
 
 def ask_job_name(scr, ci_file: CiConfigFile) -> str:
@@ -112,7 +123,7 @@ def ask_config(scr, ci_file: CiConfigFile, ui_state: UiState) -> ExecConfig:
     return selected_config
 
 
-def ask_shell(scr, ui_state: UiState):
+def ask_shell(scr, ui_state: UiState) -> str:
     shell = None
 
     def _do_ask():
@@ -136,6 +147,33 @@ def ask_shell(scr, ui_state: UiState):
 
     while shell is None:
         shell = _do_ask()
+
+    return shell
+
+
+def recap(scr, ui_state: UiState) -> bool:
+    confirm = None
+
+    def _do_ask():
+        scr.addstr('Correct? (y/n)')
+        char = chr(scr.getch())
+
+        if char not in ['y', 'n', 'Y', 'N']:
+            scr.addstr(f"Press 'y' or 'n'.\n")
+            return None
+        else:
+            return char in ['y', 'Y']
+
+    msg = f"Using executor '{ui_state.config['executor']}'"
+    if is_shell_executor(ui_state.config):
+        msg += f" with shell command '{ui_state.shell}'"
+    msg += f" to run job '{ui_state.job_name}'.\n\n"
+    scr.addstr(msg)
+
+    while confirm is None:
+        confirm = _do_ask()
+
+    return confirm
 
 
 if __name__ == '__main__':
