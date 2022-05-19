@@ -6,11 +6,14 @@ from gitlab_runner import exec_runner
 
 def foo(job_name: str, config_file: str):
     config = read_job_config(create_config_reader(config_file), job_name)
-    env = config.  # TODO remove all mandatory params from config -> env vars?
-    exec_runner(job_name, executor=config['executor'], shell=config.get('shell'), env_vars=env)
+    environment_entries = list_uppercase_entries(config)
+    exec_runner(job_name, executor=config['executor'], shell=config.get('shell'), env_entries=environment_entries)
 
 
-# Press the green button in the gutter to run the script.
+def list_uppercase_entries(dictionary: dict) -> dict:
+    return {key: dictionary[key] for key in dictionary.keys() if key.isupper()}
+
+
 if __name__ == '__main__':
     job_name = sys.argv[1]
     config_file = sys.argv[2]

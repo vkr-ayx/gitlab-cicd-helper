@@ -1,10 +1,10 @@
 # download from https://www.lfd.uci.edu/~gohlke/pythonlibs/#curses
 import curses
 from typing import Optional
-import subprocess
 
 import console_expectations as exp
 from gitlab_ci import CiConfigFile
+from gitlab_runner import exec_runner
 from model import ExecConfig
 from runner_config import is_shell_executor, DEFAULT_CONFIGS
 from shells import ALL_SHELLS
@@ -50,7 +50,7 @@ def main():
 
     if confirmation:
         _teardown(scr)
-        exec_runner(scr, ui_state)
+        execute_runner(ui_state)
     else:
         scr.addstr("Exiting...")
         _teardown(scr)
@@ -174,6 +174,10 @@ def recap(scr, ui_state: UiState) -> bool:
         confirm = _do_ask()
 
     return confirm
+
+
+def execute_runner(ui_state: UiState):
+    exec_runner(ui_state.job_name, ui_state.config['executor'], ui_state.shell)
 
 
 if __name__ == '__main__':
